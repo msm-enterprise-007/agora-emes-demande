@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGOR@-EMES | Administration</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #2563eb;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-800: #1e293b;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-800); padding: 2rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .btn-download { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; text-decoration: none;}
+        .btn-download:hover { background: var(--primary-light); }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; }
+        tr { cursor: pointer; transition: background 0.2s; }
+        tr:hover { background: var(--gray-50); }
+        
+        /* Modale - Style exact de la maquette image_372f05.png */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card { background: white; width: 100%; max-width: 500px; border-radius: 24px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; font-size: 1.2rem; font-weight: 600; }
+        .modal-close { cursor: pointer; border: none; background: none; font-size: 1.2rem; color: #64748b; }
+        .detail-group { margin-bottom: 1rem; }
+        .detail-label { font-size: 0.85rem; font-weight: 500; color: var(--gray-800); margin-bottom: 0.25rem; }
+        .detail-value { background: var(--gray-50); border: 1px solid var(--gray-200); padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.95rem; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>📥 Gestion des demandes d'accès</h2>
+        <button id="downloadBtn" class="btn-download"><i class="fas fa-file-download"></i> Télécharger au format JSON</button>
+    </div>
+
+    <table id="tableDemandes">
+        <thead>
+            <tr>
+                <th>Nom complet</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Injecté dynamiquement par JS -->
+        </tbody>
+    </table>
+
+    <!-- Structure Modale calquée sur image_372f05.png -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span><i class="fas fa-info-circle" style="color: var(--primary);"></i> Détail de la demande</span>
+                <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+<script>
+    let toutesLesDemandes = [];
+
+    async function chargerDemandes() {
+        try {
+            const res = await fetch('/api/demandes');
+            toutesLesDemandes = await res.json();
+            const tbody = document.querySelector('#tableDemandes tbody');
+            tbody.innerHTML = '';
+
+            if(toutesLesDemandes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;">Aucune demande pour le moment.</td></tr>`;
+                return;
+            }
+
+            toutesLesDemandes.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => openModal(d);
+                tr.innerHTML = `
+                    <td><strong>${d.nomComplet}</strong></td>
+                    <td>${d.email}</td>
+                    <td>${d.type}</td>
+                    <td>${d.date}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error("Erreur de chargement", err);
+        }
+    }
+
+    function openModal(d) {
+        const content = document.getElementById('modalContent');
+        content.innerHTML = `
+            <div class="detail-group"><div class="detail-label">Nom complet</div><div class="detail-value">${d.nomComplet}</div></div>
+            <div class="detail-group"><div class="detail-label">Email</div><div class="detail-value">${d.email}</div></div>
+            <div class="detail-group"><div class="detail-label">Type</div><div class="detail-value">${d.type}</div></div>
+            <div class="detail-group"><div class="detail-label">Date</div><div class="detail-value">${d.date}</div></div>
+            <div class="detail-group"><div class="detail-label">Niveau</div><div class="detail-value">${d.niveau}</div></div>
+            <div class="detail-group"><div class="detail-label">Motivation</div><div class="detail-value">${d.motivation}</div></div>
+            <div class="detail-group"><div class="detail-label">Adresse MAC Téléphone</div><div class="detail-value" style="font-family:monospace;">${d.macTel}</div></div>
+            <div class="detail-group"><div class="detail-label">Adresse MAC PC</div><div class="detail-value" style="font-family:monospace;">${d.macPc}</div></div>
+        `;
+        document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('modal').classList.remove('active');
+    }
+
+    // Gestion du téléchargement immédiat du fichier JSON brut
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+        if(toutesLesDemandes.length === 0) return alert('Aucune donnée à exporter.');
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(toutesLesDemandes, null, 2));
+        const dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href", dataStr);
+        dlAnchor.setAttribute("download", `demandes_acces_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+    });
+
+    window.onload = chargerDemandes;
+</script>
+</body>
+</html>
