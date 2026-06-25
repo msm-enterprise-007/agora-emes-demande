@@ -693,7 +693,7 @@
     </div>
 </div>
 
-<script>
+<!-- <script>
     document.getElementById('demandeForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -754,6 +754,103 @@
         e.preventDefault();
         alert('Simulation : Vous pouvez ajouter un autre appareil.');
     });
+</script> -->
+
+<script>
+    document.getElementById('demandeForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // 1. Validation du consentement
+        const consent = document.getElementById('consentement');
+        if (!consent.checked) {
+            alert('Veuillez accepter le traitement de vos données.');
+            return;
+        }
+
+        // 2. Validation des adresses MAC
+        const macTel = document.getElementById('macTel').value.trim();
+        const macPc = document.getElementById('macPc').value.trim();
+        const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+        
+        if (!macTel) {
+            alert('L\'adresse MAC du téléphone est obligatoire pour le suivi de présence.');
+            return;
+        }
+        if (!macRegex.test(macTel)) {
+            alert('Format d\'adresse MAC téléphone invalide. Exemple: AA:BB:CC:DD:EE:FF');
+            return;
+        }
+        if (macPc && !macRegex.test(macPc)) {
+            alert('Format d\'adresse MAC PC invalide.');
+            return;
+        }
+
+        // 3. Préparation de l'interface d'envoi
+        const submitBtn = document.getElementById('submitBtn');
+        const feedback = document.getElementById('formFeedback');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+        feedback.classList.add('hidden');
+
+        // 4. Construction du Payload attendu par ton fichier submit.js
+        const payload = {
+            nom: document.getElementById('nom').value.trim(),
+            prenom: document.getElementById('prenom').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            typeDemande: document.getElementById('typeDemande').value,
+            niveau: document.getElementById('niveau').value.trim(),
+            motivation: document.getElementById('motivation').value.trim(),
+            macTel: macTel,
+            macPc: macPc
+        };
+
+        // 5. Envoi effectif vers la Serverless Function de Vercel
+        try {
+            const response = await fetch('/api/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert('✅ Votre demande a été envoyée à l\'administration.\nVous recevrez un email dès validation.');
+                document.getElementById('demandeForm').reset();
+            } else {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Une erreur est survenue.');
+            }
+        } catch (err) {
+            feedback.textContent = err.message;
+            feedback.classList.remove('hidden');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Envoyer la demande</span>';
+        }
+    });
+
+    // Gestion de l'ajout d'appareil (simulation)
+    document.querySelector('.add-device a').addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('Simulation : Vous pouvez ajouter un autre appareil.');
+    });
+
+    // Animations de transition de pages d'origine
+    (function() {
+        const allLinks = document.querySelectorAll('a[href]:not([target="_blank"]):not([href^="#"]):not([href^="mailto"]):not([href^="tel"])');
+        allLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href && !href.startsWith('http') && !href.startsWith('//')) {
+                    e.preventDefault();
+                    document.body.classList.add('page-exit');
+                    setTimeout(() => {
+                        window.location.href = href;
+                    }, 150);
+                }
+            });
+        });
+    })();
 </script>
 
 </body>
